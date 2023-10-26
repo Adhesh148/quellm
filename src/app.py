@@ -44,16 +44,26 @@ async def main():
     cl.user_session.set("chain", chain)
     cl.user_session.set("datasources", data_sources)
 
-async def build_query(chain, message):
-    response = chain.invoke({"question": message.content})
-    print(response)
+async def build_query(chain, message, data_sources):
+    response = chain.invoke({"question": message.content})    
+    src_db = data_sources[response['source']]["datasource"]
+    source_type = src_db.get_type()
     
-    msg = cl.Message(
-        content=response["query"],
-        author="query",
-        language="sql",
-        parent_id=message.id
-    )
+    if 'sql' in source_type:
+        msg = cl.Message(
+            content=response["query"],
+            author="query",
+            language="sql",
+            parent_id=message.id
+        )
+    elif 'es' in source_type:
+        msg = cl.Message(
+            content=response["query"],
+            author="query",
+            language="json",
+            parent_id=message.id
+        )
+    
     await msg.send()
 
     return response
@@ -62,18 +72,30 @@ async def run_query(parent_id, response, data_sources):
     source = response["source"]
     query = response["query"]
     src_db = data_sources[source]["datasource"]
+    source_type = src_db.get_type()
 
     query_response = src_db.run_query(query)
 
-    df = pd.DataFrame.from_dict(query_response)
-    dfi.export(df, 'query_output.png')
+    if 'sql' in source_type:
+        df = pd.DataFrame.from_dict(query_response)
+        dfi.export(df, 'query_output.png')
+        # Sending an image with the local file path
+        elements = [
+            cl.Image(name="query_output", display="inline", path="./query_output.png", size="large")
+        ]
+        msg = cl.Message(content="Query Output", elements=elements, parent_id=parent_id)
+    
+    elif 'es' in source_type:
+        msg = cl.Message(
+            content=query_response,
+            author="output",
+            language="json",
+            parent_id=parent_id
+        )
+    
+    await msg.send()
 
-    # Sending an image with the local file path
-    elements = [
-        cl.Image(name="query_output", display="inline", path="./query_output.png", size="large")
-    ]
-
-    await cl.Message(content="Query Output", elements=elements, parent_id=parent_id).send()    
+    
     
     
 @cl.on_message
@@ -83,7 +105,7 @@ async def on_message(message: cl.Message):
     data_sources = cl.user_session.get("datasources")
     
     # get the query
-    query_response = await build_query(chain, message)
+    query_response = await build_query(chain, message, data_sources)
     
     # run the query
     query_output = await run_query(message.id, query_response, data_sources)

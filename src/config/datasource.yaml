@@ -15,3 +15,10 @@
   user: root
   pwd: 123_Phoenix
   db: storedb
+
+- name: ElasticSearch Datasource
+  type: es
+  info: a elasticsearch datasource that contains data about cars and students
+  host: http://localhost:9200
+  user: test
+  pwd: test123

@@ -1,5 +1,6 @@
 import yaml
 from utils.sql_datasource import SQLDatasource
+from utils.es_datasource import ElasticSearchDataSource
 
 PATH_TO_DATASOURCE_CONFIG = 'config/datasource.yaml'
 
@@ -17,7 +18,7 @@ class DataSourceLoader():
         Raises:
             Exception: Invalid datasource configuration
         Note:
-            Currently only supports SQL Datasource
+            Currently only supports SQL & ES Datasources
         Example:
             datasource_config_list = [
                 {
@@ -56,14 +57,17 @@ class DataSourceLoader():
         Raises:
             Exception: Invalid datasource type
         Note:
-            Currently only supports SQL Datasource
+            Currently only supports SQL & ES
         """
         datasources = {}
         for config in self.datasource_config_list:
-            if config['type'] == 'mysql':
+            if 'sql' in config['type']:
                 datasources[config['name']] = {
-                    'info': config['info'],
                     'datasource':  SQLDatasource(config)
+                }
+            elif 'es' in config['type']:
+                datasources[config['name']] = {
+                    'datasource':  ElasticSearchDataSource(config)
                 }
             else:
                 raise Exception('Invalid datasource type')

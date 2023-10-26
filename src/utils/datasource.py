@@ -23,6 +23,9 @@ class Datasource:
     def get_type(self):
         return self.type
 
+    def get_info(self):
+        return self.info
+
     @abstractmethod
     def get_table_names(self):
         pass
